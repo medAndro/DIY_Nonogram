@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
 #include <tchar.h>
 #include <string.h>
@@ -14,13 +15,16 @@ static COLORREF black_Color = RGB(0, 0, 0);
 static COLORREF white_Color = RGB(255, 255, 255);
 static RECT cell;
 static RECT crt;
-static int initPoint = 0;//그려지기 시작하는 위치
-static int cellSize = 25; //셀크기
+int initPoint = 0;//그려지기 시작하는 위치
+int cellSize = 25; //셀크기
+int x_Cell_Length = 10; //가로 셀 길이
+int y_Cell_Length = 10; //세로 셀 길이
 HWND createButton;
 HWND playButton;
 HWND returnMainButton;
 HWND genCode;
 HWND edit_In_Draw;
+HWND edit_In_Main;
 static int gameFlag = 1; //1이면 초기화면, 2이면 만들기, 3이면 플레이
 
 
@@ -59,7 +63,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 enum Status { WHITE, BLACK, X };
 struct tag_Cell {
-	int Num;
+	int Answer;
 	Status St;
 };
 tag_Cell arCell[10][10];
@@ -69,7 +73,7 @@ enum { INTRO, MAKE, PLAY } GameStatus;
 void InitGame();
 void DrawScreen(HDC hdc, int gameFlag);
 void GetTempFlip(int* tx, int* ty);
-int GetRemain();
+int CheckClear();
 void GenCode();
 void DrawCell(HDC hdc, int x, int y, int cellSize, COLORREF inner_Color);
 
@@ -100,8 +104,40 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 			break;
 		case 3:
 			//MessageBox(hWnd, _T("플레이 클릭됨"), _T("버튼1"), MB_OK);
-			gameFlag = 3;
-			InitGame();
+			TCHAR editword[256];
+			TCHAR cellRowData[256];
+			TCHAR* token;
+			int x, y, cnt;
+			if (GetWindowTextW(edit_In_Main, editword, GetWindowTextLengthW(edit_In_Main) + 1) != NULL) {
+				if(_tcsrchr(editword, _T('|'))==NULL)
+					MessageBox(hWnd, _T("게임코드가 올바르지 않습니다."), _T("알림"), MB_OK);
+				else {
+					gameFlag = 3;
+					token = _tcstok(editword, _T("|"));
+					x_Cell_Length = _ttoi(token); //가로 셀 길이
+					token = _tcstok(NULL, _T("|")); // 다음 토큰
+					y_Cell_Length = _ttoi(token); //세로 셀 길이
+					token = _tcstok(NULL, _T("|")); // 다음 토큰
+					_tcscpy(cellRowData, token);
+					MessageBox(hWnd, cellRowData, _T("알림"), MB_OK);
+					cnt = 0;
+					for (y = 0; y < x_Cell_Length; y++) {
+						for (x = 0; x < y_Cell_Length; x++) {
+							if (cellRowData[cnt] == '1') {
+								arCell[x][y].Answer = 1;
+							}
+							else
+								arCell[x][y].Answer = 0;
+							cnt++;
+						}
+					}
+					InitGame();
+				}
+			}
+			else {
+				MessageBox(hWnd, _T("게임코드를 입력해주세요."), _T("알림"), MB_OK);
+			}
+
 			break;
 		case 101:
 			//코드생성버튼
@@ -131,6 +167,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 			}
 			break;
 		case 3:
+			if ((LOWORD(lParam) - initPoint) > 0 && (LOWORD(lParam) - initPoint) < cellSize * 10 && (HIWORD(lParam) - initPoint) > 0 && (HIWORD(lParam) - initPoint) < cellSize * 10) {
+				if (arCell[(LOWORD(lParam) - initPoint) / cellSize][(HIWORD(lParam) - initPoint) / cellSize].St == WHITE)
+					arCell[(LOWORD(lParam) - initPoint) / cellSize][(HIWORD(lParam) - initPoint) / cellSize].St = BLACK;
+				else
+					arCell[(LOWORD(lParam) - initPoint) / cellSize][(HIWORD(lParam) - initPoint) / cellSize].St = WHITE;
+				InvalidateRect(hWnd, NULL, FALSE);
+			}
+			if (CheckClear()) {
+				MessageBox(hWnd, _T("축하합니다 클리어 하셨습니다!\n처음으로 돌아갑니다"), _T("알림"), MB_OK);
+				gameFlag = 1;
+				InitGame();
+			}
 			break;
 		}
 
@@ -200,8 +248,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 void InitGame() {
 	int i, j, x, y;
 	count = 0;
-	for (x = 0; x < 10; x++) {
-		for (y = 0; y < 10; y++) {
+	for (y = 0; y < 10; y++) {
+		for (x = 0; x < 10; x++) {
 			arCell[x][y].St = WHITE;
 		}
 	}
@@ -215,7 +263,8 @@ void InitGame() {
 			40, 40, 100, 25, hWndMain, (HMENU)2, g_hInst, NULL);
 		playButton = CreateWindow(_T("button"), _T("플레이"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
 			150, 40, 100, 25, hWndMain, (HMENU)3, g_hInst, NULL);
-
+		edit_In_Main = CreateWindow(_T("edit"), NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
+			20, 300, 200, 25, hWndMain, (HMENU)100, g_hInst, NULL);
 		DestroyWindow(edit_In_Draw);
 		DestroyWindow(genCode);
 		DestroyWindow(returnMainButton);
@@ -233,15 +282,17 @@ void InitGame() {
 			300, 300, 120, 25, hWndMain, (HMENU)1, g_hInst, NULL);
 		DestroyWindow(createButton);
 		DestroyWindow(playButton);
+		DestroyWindow(edit_In_Main);
 		break;
 	case 3: //플레이화면
-		SetRect(&crt, 0, 0, 64 * 4 + 250, 64 * 4);
+		SetRect(&crt, 0, 0, 64 * 4 + 250, 350);
 		AdjustWindowRect(&crt, WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
 		SetWindowPos(hWndMain, NULL, 0, 0, crt.right - crt.left, crt.bottom - crt.top, SWP_NOMOVE | SWP_NOZORDER);
 		returnMainButton = CreateWindow(_T("button"), _T("메인화면으로"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-			20, 20, 120, 25, hWndMain, (HMENU)1, g_hInst, NULL);
+			300, 300, 120, 25, hWndMain, (HMENU)1, g_hInst, NULL);
 		DestroyWindow(createButton);
 		DestroyWindow(playButton);
+		DestroyWindow(edit_In_Main);
 		break;
 	}
 	InvalidateRect(hWndMain, NULL, FALSE);
@@ -249,7 +300,7 @@ void InitGame() {
 
 void GenCode() {
 	TCHAR str[256];
-	_stprintf_s(str, _T("%dx%d|"), 10,10);
+	_stprintf_s(str, _T("%d|%d|"), x_Cell_Length, y_Cell_Length);
 	int x, y, num= _tcslen(str);
 	for (y = 0; y < 10; y++) {
 		for (x = 0; x < 10; x++) {
@@ -291,28 +342,46 @@ void DrawScreen(HDC hdc, int gameFlag) {
 		TextOut(hdc, 300, 10, Mes, _tcslen(Mes));//tcslen수정
 		_stprintf_s(Mes, _T("총 시도 회수 : %d  "), count);
 		TextOut(hdc, 300, 50, Mes, _tcslen(Mes));//tcslen수정
-		_stprintf_s(Mes, _T("아직 못 찾은 것 : %d  "), GetRemain());
+		_stprintf_s(Mes, _T("아직 못 찾은 것 : %d  "), 0);
 		TextOut(hdc, 300, 70, Mes, _tcslen(Mes));//tcslen수정
 		break;
 	case 3:
+		Rectangle(hdc, initPoint - 1, initPoint - 1, initPoint + cellSize * 10 + 1, initPoint + cellSize * 10 + 1); //바깥 테두리
+		for (y = 0; y < 10; y++) {
+			for (x = 0; x < 10; x++) {
+				if (arCell[x][y].St == WHITE)
+					DrawCell(hdc, x * cellSize + initPoint, y * cellSize + initPoint, cellSize, white_Color);
+				if (arCell[x][y].St == BLACK)
+					DrawCell(hdc, x * cellSize + initPoint, y * cellSize + initPoint, cellSize, black_Color);
+			}
+		}
+
+		lstrcpy(Mes, _T("플레이"));//수정
+		TextOut(hdc, 300, 10, Mes, _tcslen(Mes));//tcslen수정
+		_stprintf_s(Mes, _T("총 시도 회수 : %d  "), count);
+		TextOut(hdc, 300, 50, Mes, _tcslen(Mes));//tcslen수정
+		_stprintf_s(Mes, _T("아직 못 찾은 것 : %d  "), 0);
+		TextOut(hdc, 300, 70, Mes, _tcslen(Mes));//tcslen수정
 		break;
 
 	}
 }
 
 
-int GetRemain() {
-	/*
-	int i, j;
-	int remain = 16;
-	for (i = 0; i < 4; i++) {
-		for (j = 0; j < 4; j++) {
-			if (arCell[i][j].St == FLIP) {
-				remain--;
+int CheckClear() {
+	int x, y;
+
+	for (y = 0; y < 10; y++) {
+		for (x = 0; x < 10; x++) {
+			if (arCell[x][y].Answer == 1 && arCell[x][y].St == WHITE) {
+				return 0; //정답의 셀이 칠해져있는데 셀이 하얀색이면 0 반환
+			}
+			if (arCell[x][y].Answer == 0 && arCell[x][y].St == BLACK) {
+				return 0; //정답의 셀이 안칠해져있는데 셀이 검은색이면 0 반환
 			}
 		}
-	}*/
-	return 0;
+	}
+	return 1;
 }
 
 
