@@ -89,7 +89,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 	HDC hdc;
 	PAINTSTRUCT ps;
 	int nx, ny, i, j, tx, ty;
-	
+
 
 	switch (iMessage) {
 	case WM_CREATE:
@@ -115,7 +115,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 			TCHAR* token;
 			int x, y, cnt;
 			if (GetWindowTextW(edit_In_Main, editword, GetWindowTextLengthW(edit_In_Main) + 1) != NULL) {
-				if(_tcsrchr(editword, _T('|'))==NULL)
+				if (_tcsrchr(editword, _T('|')) == NULL)
 					MessageBox(hWnd, _T("게임코드가 올바르지 않습니다."), _T("알림"), MB_OK);
 				else {
 					gameFlag = 3;
@@ -310,7 +310,7 @@ void InitGame() {
 void GenCode() {
 	TCHAR str[256];
 	_stprintf_s(str, _T("%d|%d|"), x_Cell_Length, y_Cell_Length);
-	int x, y, num= _tcslen(str);
+	int x, y, num = _tcslen(str);
 	for (y = 0; y < 10; y++) {
 		for (x = 0; x < 10; x++) {
 			if (arCell[x][y].St == WHITE)
@@ -341,7 +341,7 @@ void DrawScreen(HDC hdc, int gameFlag) {
 		TextOut(hdc, 50, 10, Mes, _tcslen(Mes));
 		break;
 	case 2:
-		Rectangle(hdc, initPoint-1, initPoint-1, initPoint + cellSize*10 + 1, initPoint + cellSize*10 + 1); //바깥 테두리
+		Rectangle(hdc, initPoint - 1, initPoint - 1, initPoint + cellSize * 10 + 1, initPoint + cellSize * 10 + 1); //바깥 테두리
 		for (y = 0; y < 10; y++) {
 			for (x = 0; x < 10; x++) {
 				if (arCell[x][y].St == WHITE)
@@ -372,7 +372,7 @@ void DrawScreen(HDC hdc, int gameFlag) {
 
 	}
 }
-void GenNums(){
+void GenNums() {
 	TCHAR str[256];
 	int x, y, num;
 	//초기화
@@ -387,11 +387,11 @@ void GenNums(){
 		num = 0;
 		for (x = 9; x >= 0; x--) {
 
-			if (arCell[x][y].Answer == 1 ) {
+			if (arCell[x][y].Answer == 1) {
 				if (xNums[y][num] == 0) {
 					xNums[y][num] = 1;
 				}
-				else if(xNums[y][num] > 0) {
+				else if (xNums[y][num] > 0) {
 					xNums[y][num] += 1;
 				}
 			}
@@ -430,15 +430,15 @@ void GenNums(){
 }
 
 void DrawNums(HDC hdc) {
-	TCHAR str[100];
+	TCHAR str[10];
 	int x, y, num;
 	//9시방향 숫자들 그리기
 	for (y = 0; y < 10; y++) {
 		num = 0;
 		for (x = 0; x < 10; x++) {
 			if (xNums[y][x] >= 1) {
-				_stprintf_s(str, _T("%d"), xNums[y][x]);
-				TextOut(hdc, (initPoint-12)-(num*9), (initPoint+3)+ y* cellSize, str, 1);
+				_itow(xNums[y][x], str, 10);
+				TextOut(hdc, (initPoint - 12) - (num * 16) - ((_tcslen(str) - 1) * 9), (initPoint + 3) + y * cellSize, str, _tcslen(str));
 				num++;
 			}
 		}
@@ -446,13 +446,14 @@ void DrawNums(HDC hdc) {
 			TextOut(hdc, (initPoint - 12) - (num * 9), (initPoint + 3) + y * cellSize, _T("0"), 1);
 		}
 	}
+
 	//12시방향 숫자들 그리기
 	for (y = 0; y < 10; y++) {
 		num = 0;
 		for (x = 0; x < 10; x++) {
 			if (yNums[y][x] >= 1) {
-				_stprintf_s(str, _T("%d"), yNums[y][x]);
-				TextOut(hdc, (initPoint + 8) + y * cellSize, (initPoint - 18) - (num * 16), str, 1);
+				_itow(yNums[y][x], str, 10);
+				TextOut(hdc, (initPoint + 8) - ((_tcslen(str) - 1) * 4) + y * cellSize, (initPoint - 18) - (num * 16), str, _tcslen(str));
 				num++;
 			}
 		}
