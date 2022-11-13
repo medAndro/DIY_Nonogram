@@ -3,6 +3,7 @@
 #include <tchar.h>
 #include <string.h>
 #include <atlconv.h>
+#include<memory.h>
 #define random(n) (rand()%n)
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -67,14 +68,19 @@ struct tag_Cell {
 	Status St;
 };
 tag_Cell arCell[10][10];
+int xNums[10][10] = { 0, };
+int yNums[10][10] = { 0, };
 int count;
 enum { INTRO, MAKE, PLAY } GameStatus;
 
 void InitGame();
+void GenNums();
+void DrawNums(HDC hdc);
 void DrawScreen(HDC hdc, int gameFlag);
 void GetTempFlip(int* tx, int* ty);
 int CheckClear();
 void GenCode();
+
 void DrawCell(HDC hdc, int x, int y, int cellSize, COLORREF inner_Color);
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
@@ -270,6 +276,7 @@ void InitGame() {
 		DestroyWindow(returnMainButton);
 		break;
 	case 2: //만들기화면
+		initPoint = 20;
 		SetRect(&crt, 0, 0, 64 * 4 + 250, 350);
 		AdjustWindowRect(&crt, WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
 		SetWindowPos(hWndMain, NULL, 0, 0, crt.right - crt.left, crt.bottom - crt.top, SWP_NOMOVE | SWP_NOZORDER);
@@ -285,14 +292,16 @@ void InitGame() {
 		DestroyWindow(edit_In_Main);
 		break;
 	case 3: //플레이화면
-		SetRect(&crt, 0, 0, 64 * 4 + 250, 350);
+		initPoint = 80;
+		SetRect(&crt, 0, 0, 64 * 5 + 250, 400);
 		AdjustWindowRect(&crt, WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
 		SetWindowPos(hWndMain, NULL, 0, 0, crt.right - crt.left, crt.bottom - crt.top, SWP_NOMOVE | SWP_NOZORDER);
 		returnMainButton = CreateWindow(_T("button"), _T("메인화면으로"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-			300, 300, 120, 25, hWndMain, (HMENU)1, g_hInst, NULL);
+			400, 300, 120, 25, hWndMain, (HMENU)1, g_hInst, NULL);
 		DestroyWindow(createButton);
 		DestroyWindow(playButton);
 		DestroyWindow(edit_In_Main);
+		GenNums();
 		break;
 	}
 	InvalidateRect(hWndMain, NULL, FALSE);
@@ -319,6 +328,10 @@ void GenCode() {
 		20, 300, 200, 25, hWndMain, (HMENU)100, g_hInst, NULL);
 	InvalidateRect(hWndMain, NULL, FALSE);
 }
+
+
+
+
 void DrawScreen(HDC hdc, int gameFlag) {
 	int x, y, image;
 	TCHAR Mes[128];
@@ -340,10 +353,6 @@ void DrawScreen(HDC hdc, int gameFlag) {
 
 		lstrcpy(Mes, _T("만들기"));//수정
 		TextOut(hdc, 300, 10, Mes, _tcslen(Mes));//tcslen수정
-		_stprintf_s(Mes, _T("총 시도 회수 : %d  "), count);
-		TextOut(hdc, 300, 50, Mes, _tcslen(Mes));//tcslen수정
-		_stprintf_s(Mes, _T("아직 못 찾은 것 : %d  "), 0);
-		TextOut(hdc, 300, 70, Mes, _tcslen(Mes));//tcslen수정
 		break;
 	case 3:
 		Rectangle(hdc, initPoint - 1, initPoint - 1, initPoint + cellSize * 10 + 1, initPoint + cellSize * 10 + 1); //바깥 테두리
@@ -355,18 +364,103 @@ void DrawScreen(HDC hdc, int gameFlag) {
 					DrawCell(hdc, x * cellSize + initPoint, y * cellSize + initPoint, cellSize, black_Color);
 			}
 		}
+		DrawNums(hdc);
 
 		lstrcpy(Mes, _T("플레이"));//수정
-		TextOut(hdc, 300, 10, Mes, _tcslen(Mes));//tcslen수정
-		_stprintf_s(Mes, _T("총 시도 회수 : %d  "), count);
-		TextOut(hdc, 300, 50, Mes, _tcslen(Mes));//tcslen수정
-		_stprintf_s(Mes, _T("아직 못 찾은 것 : %d  "), 0);
-		TextOut(hdc, 300, 70, Mes, _tcslen(Mes));//tcslen수정
+		TextOut(hdc, 400, 10, Mes, _tcslen(Mes));//tcslen수정
 		break;
 
 	}
 }
+void GenNums(){
+	TCHAR str[256];
+	int x, y, num;
+	//초기화
+	for (y = 0; y < 10; y++) {
+		for (x = 0; x < 10; x++) {
+			xNums[x][y] = 0;
+			yNums[x][y] = 0;
+		}
+	}
+	//9시방향 숫자들 생성
+	for (y = 0; y < 10; y++) {
+		num = 0;
+		for (x = 9; x >= 0; x--) {
 
+			if (arCell[x][y].Answer == 1 ) {
+				if (xNums[y][num] == 0) {
+					xNums[y][num] = 1;
+				}
+				else if(xNums[y][num] > 0) {
+					xNums[y][num] += 1;
+				}
+			}
+			else if (arCell[x][y].Answer == 0) {
+				if (xNums[y][num] > 0) {
+					num++;
+				}
+			}
+		}
+	}
+
+	//12시방향 숫자들 생성
+	for (y = 0; y < 10; y++) {
+		num = 0;
+		for (x = 9; x >= 0; x--) {
+			if (arCell[y][x].Answer == 1) {
+				if (yNums[y][num] == 0) {
+					yNums[y][num] = 1;
+				}
+				else if (yNums[y][num] > 0) {
+					yNums[y][num] += 1;
+				}
+			}
+			else if (arCell[y][x].Answer == 0) {
+				if (yNums[y][num] > 0) {
+					num++;
+				}
+			}
+		}
+	}
+	_stprintf_s(str, _T("%d|%d|%d|%d"), xNums[0][0], xNums[0][1], xNums[0][2], xNums[0][3]);
+	MessageBox(hWndMain, str, _T("디버그"), MB_OK);
+	_stprintf_s(str, _T("%d|%d|%d|%d"), yNums[0][0], yNums[0][1], yNums[0][2], yNums[0][3]);
+	MessageBox(hWndMain, str, _T("디버그"), MB_OK);
+
+}
+
+void DrawNums(HDC hdc) {
+	TCHAR str[100];
+	int x, y, num;
+	//9시방향 숫자들 그리기
+	for (y = 0; y < 10; y++) {
+		num = 0;
+		for (x = 0; x < 10; x++) {
+			if (xNums[y][x] >= 1) {
+				_stprintf_s(str, _T("%d"), xNums[y][x]);
+				TextOut(hdc, (initPoint-12)-(num*9), (initPoint+3)+ y* cellSize, str, 1);
+				num++;
+			}
+		}
+		if (num == 0) {
+			TextOut(hdc, (initPoint - 12) - (num * 9), (initPoint + 3) + y * cellSize, _T("0"), 1);
+		}
+	}
+	//12시방향 숫자들 그리기
+	for (y = 0; y < 10; y++) {
+		num = 0;
+		for (x = 0; x < 10; x++) {
+			if (yNums[y][x] >= 1) {
+				_stprintf_s(str, _T("%d"), yNums[y][x]);
+				TextOut(hdc, (initPoint + 8) + y * cellSize, (initPoint - 18) - (num * 16), str, 1);
+				num++;
+			}
+		}
+		if (num == 0) {
+			TextOut(hdc, (initPoint + 8) + y * cellSize, (initPoint - 18) - (num * 16), _T("0"), 1);
+		}
+	}
+}
 
 int CheckClear() {
 	int x, y;
