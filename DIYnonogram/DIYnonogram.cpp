@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <tchar.h>
 #include <string.h>
+#include <stdio.h>
 #include <atlconv.h>
 #include<memory.h>
 #define random(n) (rand()%n)
@@ -26,6 +27,8 @@ HWND returnMainButton;
 HWND genCode;
 HWND edit_In_Draw;
 HWND edit_In_Main;
+static int currentPlayTime;
+static TCHAR gameTimerText[128] = _T("");
 static int gameFlag = 1; //1이면 초기화면, 2이면 만들기, 3이면 플레이
 
 
@@ -126,7 +129,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 					y_Cell_Length = _ttoi(token); //세로 셀 길이
 					token = _tcstok(NULL, _T("|")); // 다음 토큰
 					_tcscpy(cellRowData, token);
-					MessageBox(hWnd, cellRowData, _T("알림"), MB_OK);
+					//MessageBox(hWnd, cellRowData, _T("알림"), MB_OK);
 					cnt = 0;
 					for (y = 0; y < x_Cell_Length; y++) {
 						for (x = 0; x < y_Cell_Length; x++) {
@@ -182,7 +185,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 				InvalidateRect(hWnd, NULL, FALSE);
 			}
 			if (CheckClear()) {
-				MessageBox(hWnd, _T("축하합니다 클리어 하셨습니다!\n처음으로 돌아갑니다"), _T("알림"), MB_OK);
+				KillTimer(hWndMain, 31);
+				TCHAR clearText[128] = _T("");
+				_stprintf_s(clearText, _T("축하합니다 클리어 하셨습니다!\n처음으로 돌아갑니다\n클리어 시간 : %02d:%02d:%02d"),
+					int(currentPlayTime / 3600), int(currentPlayTime / 60) % 60, currentPlayTime % 60);
+				MessageBox(hWnd, clearText, _T("알림"), MB_OK);
 				gameFlag = 1;
 				InitGame();
 			}
@@ -238,25 +245,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 		}
 		return 0;
 	case WM_TIMER:
-		/*
 		switch (wParam) {
-		case 0:
-			KillTimer(hWnd, 0);
-			GameStatus = RUN;
+		case 31:
+			currentPlayTime += 1;
 			InvalidateRect(hWnd, NULL, FALSE);
 			break;
-		case 1:
-			KillTimer(hWnd, 1);
-			GameStatus = RUN;
-			for (i = 0; i < 4; i++) {
-				for (j = 0; j < 4; j++) {
-					if (arCell[i][j].St == TEMPFLIP)
-						arCell[i][j].St = HIDDEN;
-				}
-			}
-			InvalidateRect(hWnd, NULL, FALSE);
-			break;
-		}*/
+		}
 		return 0;
 	case WM_PAINT:
 		hdc = BeginPaint(hWndMain, &ps);
@@ -311,6 +305,8 @@ void InitGame() {
 		break;
 	case 3: //플레이화면
 		initPoint = 80;
+		currentPlayTime = 0;
+		SetTimer(hWndMain, 31, 1000, NULL);
 		SetRect(&crt, 0, 0, 64 * 5 + 250, 400);
 		AdjustWindowRect(&crt, WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
 		SetWindowPos(hWndMain, NULL, 0, 0, crt.right - crt.left, crt.bottom - crt.top, SWP_NOMOVE | SWP_NOZORDER);
@@ -373,6 +369,11 @@ void DrawScreen(HDC hdc, int gameFlag) {
 		TextOut(hdc, 300, 10, Mes, _tcslen(Mes));//tcslen수정
 		break;
 	case 3:
+		
+		_stprintf_s(gameTimerText, _T("경과시간 %02d:%02d:%02d"), 
+			int(currentPlayTime / 3600), int(currentPlayTime/60)%60,currentPlayTime%60);
+		TextOut(hdc, 400, 350, gameTimerText, _tcslen(gameTimerText));
+
 		Rectangle(hdc, initPoint - 1, initPoint - 1, initPoint + cellSize * 10 + 1, initPoint + cellSize * 10 + 1); //바깥 테두리
 		for (y = 0; y < 10; y++) {
 			for (x = 0; x < 10; x++) {
@@ -442,10 +443,10 @@ void GenNums() {
 			}
 		}
 	}
-	_stprintf_s(str, _T("%d|%d|%d|%d"), xNums[0][0], xNums[0][1], xNums[0][2], xNums[0][3]);
-	MessageBox(hWndMain, str, _T("디버그"), MB_OK);
-	_stprintf_s(str, _T("%d|%d|%d|%d"), yNums[0][0], yNums[0][1], yNums[0][2], yNums[0][3]);
-	MessageBox(hWndMain, str, _T("디버그"), MB_OK);
+	//_stprintf_s(str, _T("%d|%d|%d|%d"), xNums[0][0], xNums[0][1], xNums[0][2], xNums[0][3]);
+	//MessageBox(hWndMain, str, _T("디버그"), MB_OK);
+	//_stprintf_s(str, _T("%d|%d|%d|%d"), yNums[0][0], yNums[0][1], yNums[0][2], yNums[0][3]);
+	//MessageBox(hWndMain, str, _T("디버그"), MB_OK);
 
 }
 
