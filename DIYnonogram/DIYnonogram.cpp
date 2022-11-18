@@ -82,6 +82,7 @@ int CheckClear();
 void GenCode();
 
 void DrawCell(HDC hdc, int x, int y, int cellSize, COLORREF inner_Color);
+void DrawCell(HDC hdc, int x, int y, int cellSize, COLORREF inner_Color, bool XdrawFlag);
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 	WPARAM wParam, LPARAM lParam)
@@ -176,7 +177,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 			if ((LOWORD(lParam) - initPoint) > 0 && (LOWORD(lParam) - initPoint) < cellSize * 10 && (HIWORD(lParam) - initPoint) > 0 && (HIWORD(lParam) - initPoint) < cellSize * 10) {
 				if (arCell[(LOWORD(lParam) - initPoint) / cellSize][(HIWORD(lParam) - initPoint) / cellSize].St == WHITE)
 					arCell[(LOWORD(lParam) - initPoint) / cellSize][(HIWORD(lParam) - initPoint) / cellSize].St = BLACK;
-				else
+				else if(arCell[(LOWORD(lParam) - initPoint) / cellSize][(HIWORD(lParam) - initPoint) / cellSize].St == BLACK)
 					arCell[(LOWORD(lParam) - initPoint) / cellSize][(HIWORD(lParam) - initPoint) / cellSize].St = WHITE;
 				InvalidateRect(hWnd, NULL, FALSE);
 			}
@@ -218,6 +219,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 				SetTimer(hWnd, 1, 100, NULL);
 			}
 		}*/
+		return 0;
+	case WM_RBUTTONDOWN:
+		switch (gameFlag) {
+		case 1:
+			break;
+		case 2:
+			break;
+		case 3:
+			if ((LOWORD(lParam) - initPoint) > 0 && (LOWORD(lParam) - initPoint) < cellSize * 10 && (HIWORD(lParam) - initPoint) > 0 && (HIWORD(lParam) - initPoint) < cellSize * 10) {
+				if (arCell[(LOWORD(lParam) - initPoint) / cellSize][(HIWORD(lParam) - initPoint) / cellSize].St != X)
+					arCell[(LOWORD(lParam) - initPoint) / cellSize][(HIWORD(lParam) - initPoint) / cellSize].St = X;
+				else
+					arCell[(LOWORD(lParam) - initPoint) / cellSize][(HIWORD(lParam) - initPoint) / cellSize].St = WHITE;
+				InvalidateRect(hWnd, NULL, FALSE);
+			}
+			break;
+		}
 		return 0;
 	case WM_TIMER:
 		/*
@@ -362,6 +380,8 @@ void DrawScreen(HDC hdc, int gameFlag) {
 					DrawCell(hdc, x * cellSize + initPoint, y * cellSize + initPoint, cellSize, white_Color);
 				if (arCell[x][y].St == BLACK)
 					DrawCell(hdc, x * cellSize + initPoint, y * cellSize + initPoint, cellSize, black_Color);
+				if (arCell[x][y].St == X)
+					DrawCell(hdc, x * cellSize + initPoint, y * cellSize + initPoint, cellSize, white_Color, true);
 			}
 		}
 		DrawNums(hdc);
@@ -481,18 +501,29 @@ int CheckClear() {
 
 
 void DrawCell(HDC hdc, int x, int y, int cellSize, COLORREF inner_Color) {
+	DrawCell(hdc, x, y, cellSize, inner_Color, false);
+}
+
+
+void DrawCell(HDC hdc, int x, int y, int cellSize, COLORREF inner_Color, bool XdrawFlag) {
 
 	HBRUSH myBrush = (HBRUSH)CreateSolidBrush(inner_Color);
 	HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, myBrush);
 
 	Rectangle(hdc, x, y, x + cellSize, y + cellSize);
 
-
+	if (XdrawFlag) {
+		MoveToEx(hdc, x, y, NULL);
+		LineTo(hdc, x + cellSize, y + cellSize);
+		MoveToEx(hdc, x+cellSize, y, NULL);
+		LineTo(hdc, x, y + cellSize);
+	}
 	SelectObject(hdc, oldBrush);
 	DeleteObject(myBrush);
 
-
 }
+
+
 
 void DrawObject(HDC hdc, RECT& r, COLORREF color, int type)
 {
