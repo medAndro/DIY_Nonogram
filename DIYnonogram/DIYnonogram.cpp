@@ -85,7 +85,7 @@ int CheckClear();
 void GenCode();
 int base64_encode(char* text, int numBytes, char** encoded);
 int base64_decode(char* text, char* dst, int numBytes);
-
+int CopyTextToClipboard(const char* ap_string);
 void DrawCell(HDC hdc, int x, int y, int cellSize, COLORREF inner_Color);
 void DrawCell(HDC hdc, int x, int y, int cellSize, COLORREF inner_Color, bool XdrawFlag);
 
@@ -95,9 +95,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 	HDC hdc;
 	PAINTSTRUCT ps;
 	int nx, ny, i, j, tx, ty;
+	char editword[256];
+	TCHAR cellRowData[256];
+	TCHAR* token;
+	int x, y, cnt;
+	char gamecode[256];
+	char str[256];
+	char* strBase64;
 
-
-
+	HGLOBAL hClipboardData;
+	char ClipboardData[256];
 	switch (iMessage) {
 	case WM_CREATE:
 		hWndMain = hWnd;
@@ -117,13 +124,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 			break;
 		case 3:
 			//MessageBox(hWnd, _T("플레이 클릭됨"), _T("버튼1"), MB_OK);
-			char editword[256];
-			TCHAR cellRowData[256];
-			TCHAR* token;
-			int x, y, cnt;
-			char gamecode[256];
-			char str[256];
-			char* strBase64;
+
 
 
 			if (GetWindowTextA(edit_In_Main, editword, GetWindowTextLengthA(edit_In_Main) + 1) != NULL) {
@@ -167,7 +168,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 			break;
 		case 101:
 			//코드생성버튼
-			GenCode();
+			GetWindowTextA(edit_In_Draw, ClipboardData, GetWindowTextLengthA(edit_In_Draw) + 1);
+			CopyTextToClipboard(ClipboardData);
+			//GenCode();
 			break;
 		}
 		return 0;
@@ -310,11 +313,11 @@ void InitGame() {
 		SetWindowPos(hWndMain, NULL, 0, 0, crt.right - crt.left, crt.bottom - crt.top, SWP_NOMOVE | SWP_NOZORDER);
 		edit_In_Draw = CreateWindow(_T("edit"), NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
 			20, 300, 200, 25, hWndMain, (HMENU)100, g_hInst, NULL);
-		genCode = CreateWindow(_T("button"), _T("코드생성"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-			220, 300, 80, 25, hWndMain, (HMENU)101, g_hInst, NULL);
+		genCode = CreateWindow(_T("button"), _T("클립보드로 복사"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+			220, 300, 120, 25, hWndMain, (HMENU)101, g_hInst, NULL);
 
 		returnMainButton = CreateWindow(_T("button"), _T("메인화면으로"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-			300, 300, 120, 25, hWndMain, (HMENU)1, g_hInst, NULL);
+			350, 300, 120, 25, hWndMain, (HMENU)1, g_hInst, NULL);
 		DestroyWindow(createButton);
 		DestroyWindow(playButton);
 		DestroyWindow(edit_In_Main);
@@ -686,6 +689,39 @@ int base64_decode(char* text, char* dst, int numBytes)
 	return space_idx;
 }
 //https://rangsub.tistory.com/8
+
+
+int CopyTextToClipboard(const char* ap_string)
+
+{
+	// 저장할 문자열의 길이를 구한다. ('\0'까지 포함한 크기)
+	int string_length = strlen(ap_string) + 1;
+
+	// 클립보드로 문자열을 복사하기 위하여 메모리를 할당한다. 
+	// 클립보드에는 핸들을 넣는 형식이라서 HeapAlloc 함수 사용이 블가능하다. 
+	HANDLE h_data = ::GlobalAlloc(GMEM_DDESHARE | GMEM_MOVEABLE, string_length);
+	// 할당된 메모리에 문자열을 복사하기 위해서 사용 가능한 주소를 얻는다. 
+
+	char* p_data = (char*)::GlobalLock(h_data);
+	if (NULL != p_data)
+	{
+		// 할당된 메모리 영역에 삽입할 문자열을 복사한다. 
+		memcpy(p_data, ap_string, string_length);
+		// 문자열을 복사하기 위해서 Lock 했던 메모리를 해제한다.
+
+		::GlobalUnlock(h_data);
+		if (::OpenClipboard(hWndMain))
+		{
+			::EmptyClipboard(); // 클립보드를 연다.
+			::SetClipboardData(CF_TEXT, h_data);  // 클립보드에 저장된 기존 문자열을 삭제한다.
+			// 클립보드로 문자열을 복사한다.
+			::CloseClipboard(); // 클립보드를 닫는다.
+		}
+	}
+	return 0;
+}//https://pdsbox.tistory.com/37
+
+
 
 
 //temp 문자열 길이 구하기
