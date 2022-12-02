@@ -4,13 +4,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <atlconv.h>
-#include<memory.h>
-#define random(n) (rand()%n)
+#include <memory.h>
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 HINSTANCE g_hInst;
 HWND hWndMain;
-LPCTSTR lpszClass = _T("DIY노노그램 0.1");
+LPCTSTR lpszClass = _T("DIY노노그램 1.0");
 void DrawObject(HDC, RECT&, COLORREF, int);
 void DrawObject(HDC, RECT&, COLORREF, COLORREF, int);
 static COLORREF black_Color = RGB(0, 0, 0);
@@ -80,7 +79,6 @@ void InitGame();
 void GenNums();
 void DrawNums(HDC hdc);
 void DrawScreen(HDC hdc, int gameFlag);
-void GetTempFlip(int* tx, int* ty);
 int CheckClear();
 void GenCode();
 int base64_encode(char* text, int numBytes, char** encoded);
@@ -94,16 +92,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 {
 	HDC hdc;
 	PAINTSTRUCT ps;
-	int nx, ny, i, j, tx, ty;
 	char editword[256];
 	TCHAR cellRowData[256];
 	TCHAR* token;
 	int x, y, cnt;
 	char gamecode[256];
-	char str[256];
-	char* strBase64;
-
-	HGLOBAL hClipboardData;
 	char ClipboardData[256];
 	switch (iMessage) {
 	case WM_CREATE:
@@ -113,29 +106,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case 1:
-			//MessageBox(hWnd, _T("메인화면으로 클릭됨"), _T("버튼1"), MB_OK);
+			//메인화면으로 버튼 클릭시
 			gameFlag = 1;
 			InitGame();
 			break;
 		case 2:
-			//MessageBox(hWnd, _T("만들기 클릭됨"), _T("버튼1"), MB_OK);
+			//만들기 클릭시
 			gameFlag = 2;
 			InitGame();
 			break;
 		case 3:
-			//MessageBox(hWnd, _T("플레이 클릭됨"), _T("버튼1"), MB_OK);
-
-
-
+			//플레이 클릭시
 			if (GetWindowTextA(edit_In_Main, editword, GetWindowTextLengthA(edit_In_Main) + 1) != NULL) {
 				editword[GetWindowTextLengthA(edit_In_Main) + 1] = '\0';
-				base64_decode(editword, gamecode, strlen(editword));
+				base64_decode(editword, gamecode, (int)strlen(editword));
 
-				TCHAR* gamecodeTstr = new TCHAR[strlen(gamecode) + 1];
-				memset(gamecodeTstr, '\0', sizeof(TCHAR) * (strlen(gamecode) + 1));
+				TCHAR* gamecodeTstr = new TCHAR[(int)strlen(gamecode) + 1];
+				memset(gamecodeTstr, '\0', sizeof(TCHAR) * ((int)strlen(gamecode) + 1));
 
-				MultiByteToWideChar(CP_ACP, 0, gamecode, strlen(gamecode) + 1, gamecodeTstr, strlen(gamecode));
-				MessageBox(hWnd, gamecodeTstr, _T("알림"), MB_OK);
+				MultiByteToWideChar(CP_ACP, 0, gamecode, (int)strlen(gamecode) + 1, gamecodeTstr, (int)strlen(gamecode));
 				if (_tcsrchr(gamecodeTstr, _T('|')) == NULL)
 					MessageBox(hWnd, _T("게임코드가 올바르지 않습니다."), _T("알림"), MB_OK);
 				else {
@@ -146,7 +135,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 					y_Cell_Length = _ttoi(token); //세로 셀 길이
 					token = _tcstok(NULL, _T("|")); // 다음 토큰
 					_tcscpy(cellRowData, token);
-					//MessageBox(hWnd, cellRowData, _T("알림"), MB_OK);
 					cnt = 0;
 					for (y = 0; y < x_Cell_Length; y++) {
 						for (x = 0; x < y_Cell_Length; x++) {
@@ -164,19 +152,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 			else {
 				MessageBox(hWnd, _T("게임코드를 입력해주세요."), _T("알림"), MB_OK);
 			}
-
 			break;
 		case 101:
 			//코드생성버튼
 			GetWindowTextA(edit_In_Draw, ClipboardData, GetWindowTextLengthA(edit_In_Draw) + 1);
 			CopyTextToClipboard(ClipboardData);
-			//GenCode();
+			MessageBox(hWnd, _T("게임코드가 복사되었습니다."), _T("알림"), MB_OK);
 			break;
 		}
 		return 0;
 	case WM_LBUTTONDOWN:
-		TCHAR str[100];
-
 		switch (gameFlag) {
 		case 1:
 			break;
@@ -214,37 +199,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 			}
 			break;
 		}
-
-		/*
-		nx = LOWORD(lParam) / 64;
-		ny = HIWORD(lParam) / 64;
-		if (GameStatus != RUN || nx > 3 || ny > 3 || arCell[nx][ny].St != HIDDEN) {
-			return 0;
-		}
-		GetTempFlip(&tx, &ty);
-		if (tx == -1) {
-			arCell[nx][ny].St = TEMPFLIP;
-			InvalidateRect(hWnd, NULL, FALSE);
-		}
-		else {
-			count++;
-			if (arCell[tx][ty].Num == arCell[nx][ny].Num) {
-				MessageBeep(0);
-				arCell[tx][ty].St = FLIP;
-				arCell[nx][ny].St = FLIP;
-				InvalidateRect(hWnd, NULL, FALSE);
-				if (GetRemain() == 0) {
-					MessageBox(hWnd, _T("축하합니다. 다시 시작합니다."), _T("알림"), MB_OK);
-					InitGame();
-				}
-			}
-			else {
-				arCell[nx][ny].St = TEMPFLIP;
-				InvalidateRect(hWnd, NULL, FALSE);
-				GameStatus = VIEW;
-				SetTimer(hWnd, 1, 100, NULL);
-			}
-		}*/
 		return 0;
 	case WM_RBUTTONDOWN:
 		switch (gameFlag) {
@@ -277,13 +231,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage,
 		EndPaint(hWnd, &ps);
 		return 0;
 	case WM_DESTROY:
+		KillTimer(hWndMain, 31);
 		PostQuitMessage(0);
 		return 0;
 	}
 	return(DefWindowProc(hWnd, iMessage, wParam, lParam));
 }
 void InitGame() {
-	int i, j, x, y;
+	int x, y;
 	count = 0;
 	for (y = 0; y < 10; y++) {
 		for (x = 0; x < 10; x++) {
@@ -293,31 +248,31 @@ void InitGame() {
 	switch (gameFlag) {
 	case 1: //메인화면
 		initPoint = 20;
-		SetRect(&crt, 0, 0, 64 * 5 + 230, 64 * 6);
+		SetRect(&crt, 0, 0, 64 * 5 + 230, 64 * 3+30);
 		AdjustWindowRect(&crt, WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
 		SetWindowPos(hWndMain, NULL, 0, 0, crt.right - crt.left, crt.bottom - crt.top, SWP_NOMOVE | SWP_NOZORDER);
 		createButton = CreateWindow(_T("button"), _T("만들기"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-			40, 40, 100, 25, hWndMain, (HMENU)2, g_hInst, NULL);
+			40, 150, 100, 25, hWndMain, (HMENU)2, g_hInst, NULL);
 		playButton = CreateWindow(_T("button"), _T("플레이"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-			150, 40, 100, 25, hWndMain, (HMENU)3, g_hInst, NULL);
+			410, 150, 100, 25, hWndMain, (HMENU)3, g_hInst, NULL);
 		edit_In_Main = CreateWindow(_T("edit"), NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
-			20, 300, 200, 25, hWndMain, (HMENU)100, g_hInst, NULL);
+			200, 150, 200, 25, hWndMain, (HMENU)100, g_hInst, NULL);
 		DestroyWindow(edit_In_Draw);
 		DestroyWindow(genCode);
 		DestroyWindow(returnMainButton);
 		break;
 	case 2: //만들기화면
 		initPoint = 20;
-		SetRect(&crt, 0, 0, 64 * 4 + 250, 350);
+		SetRect(&crt, 0, 0, 64 * 3 + 250, 350);
 		AdjustWindowRect(&crt, WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
 		SetWindowPos(hWndMain, NULL, 0, 0, crt.right - crt.left, crt.bottom - crt.top, SWP_NOMOVE | SWP_NOZORDER);
 		edit_In_Draw = CreateWindow(_T("edit"), NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
-			20, 300, 200, 25, hWndMain, (HMENU)100, g_hInst, NULL);
+			20, 300, 240, 25, hWndMain, (HMENU)100, g_hInst, NULL);
 		genCode = CreateWindow(_T("button"), _T("클립보드로 복사"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-			220, 300, 120, 25, hWndMain, (HMENU)101, g_hInst, NULL);
+			270, 300, 150, 25, hWndMain, (HMENU)101, g_hInst, NULL);
 
 		returnMainButton = CreateWindow(_T("button"), _T("메인화면으로"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-			350, 300, 120, 25, hWndMain, (HMENU)1, g_hInst, NULL);
+			290, 55, 120, 25, hWndMain, (HMENU)1, g_hInst, NULL);
 		DestroyWindow(createButton);
 		DestroyWindow(playButton);
 		DestroyWindow(edit_In_Main);
@@ -330,11 +285,11 @@ void InitGame() {
 		AdjustWindowRect(&crt, WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
 		SetWindowPos(hWndMain, NULL, 0, 0, crt.right - crt.left, crt.bottom - crt.top, SWP_NOMOVE | SWP_NOZORDER);
 		returnMainButton = CreateWindow(_T("button"), _T("메인화면으로"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-			400, 300, 120, 25, hWndMain, (HMENU)1, g_hInst, NULL);
+			370, 95, 120, 25, hWndMain, (HMENU)1, g_hInst, NULL);
 		DestroyWindow(createButton);
 		DestroyWindow(playButton);
 		DestroyWindow(edit_In_Main);
-		GenNums();
+		
 		break;
 	}
 	InvalidateRect(hWndMain, NULL, FALSE);
@@ -345,9 +300,7 @@ void GenCode() {
 	char* strBase64;
 	int strLen = 256;
 	sprintf(str, "%d|%d|\0", x_Cell_Length, y_Cell_Length);
-	//strcpy(str, "%d|%d|");
-	//_stprintf_s(str, _T(), x_Cell_Length, y_Cell_Length);
-	int x, y, num = strlen(str);;
+	int x, y, num = (int)strlen(str);;
 	for (y = 0; y < 10; y++) {
 		for (x = 0; x < 10; x++) {
 			if (arCell[x][y].St == WHITE)
@@ -358,32 +311,31 @@ void GenCode() {
 		}
 	}
 	str[num] = '\0';
-	//https://dhna.tistory.com/22
-
-	//WideCharToMultiByte(CP_ACP, 0, str, _tcslen(str), strChar, _tcslen(str), NULL, NULL);
-	base64_encode(str, strlen(str), &strBase64);
-	TCHAR* base64Tstr = new TCHAR[strlen(strBase64) + 1];
-	memset(base64Tstr, '\0', sizeof(TCHAR) * (strlen(strBase64) + 1));
-
-	MultiByteToWideChar(CP_ACP, 0, strBase64, strlen(strBase64) + 1, base64Tstr, strlen(strBase64));
-	//_stprintf_s(str, _T("x좌표: %d, y좌표: %d, x배열: %d, y배열:%d"), LOWORD(lParam) - initPoint, HIWORD(lParam) - initPoint, (LOWORD(lParam) - initPoint) / cellSize, (HIWORD(lParam) - initPoint) / cellSize);
-		//MessageBox(hWnd, str, _T("알림"), MB_OK);
+	base64_encode(str, (int)strlen(str), &strBase64);
+	TCHAR* base64Tstr = new TCHAR[(int)strlen(strBase64) + 1];
+	memset(base64Tstr, '\0', sizeof(TCHAR) * ((int)strlen(strBase64) + 1));
+	MultiByteToWideChar(CP_ACP, 0, strBase64, (int)strlen(strBase64) + 1, base64Tstr, (int)strlen(strBase64)); //https://dhna.tistory.com/22
 	DestroyWindow(edit_In_Draw);
 	edit_In_Draw = CreateWindow(_T("edit"), base64Tstr, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
-		20, 300, 200, 25, hWndMain, (HMENU)100, g_hInst, NULL);
+		20, 300, 240, 25, hWndMain, (HMENU)100, g_hInst, NULL);
 	InvalidateRect(hWndMain, NULL, FALSE);
 }
 
 
-
-
 void DrawScreen(HDC hdc, int gameFlag) {
-	int x, y, image;
+	int x, y;
 	TCHAR Mes[128];
+	HFONT hFont, OldFont;
 	switch (gameFlag) {
 	case 1:
+		hFont = CreateFont(50, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, VARIABLE_PITCH | FF_ROMAN, _T("맑은 고딕"));
+		OldFont = (HFONT)SelectObject(hdc, hFont);
 		lstrcpy(Mes, _T("DIY 노노그램"));
-		TextOut(hdc, 50, 10, Mes, _tcslen(Mes));
+		TextOut(hdc, 170, 30, Mes, (int)_tcslen(Mes));
+		SelectObject(hdc, OldFont);
+		DeleteObject(hFont);
+
+		TextOut(hdc, 200, 130, _T("▼게임코드 입력"), (int)_tcslen(_T("▼게임코드 입력")));
 		break;
 	case 2:
 		Rectangle(hdc, initPoint - 1, initPoint - 1, initPoint + cellSize * 10 + 1, initPoint + cellSize * 10 + 1); //바깥 테두리
@@ -395,16 +347,26 @@ void DrawScreen(HDC hdc, int gameFlag) {
 					DrawCell(hdc, x * cellSize + initPoint, y * cellSize + initPoint, cellSize, black_Color);
 			}
 		}
-
+		hFont = CreateFont(30, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, VARIABLE_PITCH | FF_ROMAN, _T("맑은 고딕"));
+		OldFont = (HFONT)SelectObject(hdc, hFont);
 		lstrcpy(Mes, _T("만들기"));//수정
-		TextOut(hdc, 300, 10, Mes, _tcslen(Mes));//tcslen수정
+		TextOut(hdc, 290, 10, Mes, (int)_tcslen(Mes));//tcslen수정
+		SelectObject(hdc, OldFont);
+		DeleteObject(hFont);
 		break;
 	case 3:
-
-		_stprintf_s(gameTimerText, _T("경과시간 %02d:%02d:%02d"),
+		_stprintf_s(gameTimerText, _T("%02d시 %02d분 %02d초"),
 			int(currentPlayTime / 3600), int(currentPlayTime / 60) % 60, currentPlayTime % 60);
-		TextOut(hdc, 400, 350, gameTimerText, _tcslen(gameTimerText));
 
+
+		hFont = CreateFont(30, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, VARIABLE_PITCH | FF_ROMAN, _T("맑은 고딕"));
+		OldFont = (HFONT)SelectObject(hdc, hFont);
+		TextOut(hdc, 370, 180, _T("◆ 플레이 시간 ◆"), (int)_tcslen(_T("◆ 플레이 시간 ◆")));
+		TextOut(hdc, 378, 220, gameTimerText, (int)_tcslen(gameTimerText));
+		SelectObject(hdc, OldFont);
+		DeleteObject(hFont);
+
+		
 		Rectangle(hdc, initPoint - 1, initPoint - 1, initPoint + cellSize * 10 + 1, initPoint + cellSize * 10 + 1); //바깥 테두리
 		for (y = 0; y < 10; y++) {
 			for (x = 0; x < 10; x++) {
@@ -417,15 +379,17 @@ void DrawScreen(HDC hdc, int gameFlag) {
 			}
 		}
 		DrawNums(hdc);
-
+		hFont = CreateFont(30, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, VARIABLE_PITCH | FF_ROMAN, _T("맑은 고딕"));
+		OldFont = (HFONT)SelectObject(hdc, hFont);
 		lstrcpy(Mes, _T("플레이"));//수정
-		TextOut(hdc, 400, 10, Mes, _tcslen(Mes));//tcslen수정
+		TextOut(hdc, 370, 50, Mes, (int)_tcslen(Mes));//tcslen수정
+		SelectObject(hdc, OldFont);
+		DeleteObject(hFont);
 		break;
 
 	}
 }
 void GenNums() {
-	TCHAR str[256];
 	int x, y, num;
 	//초기화
 	for (y = 0; y < 10; y++) {
@@ -438,7 +402,6 @@ void GenNums() {
 	for (y = 0; y < 10; y++) {
 		num = 0;
 		for (x = 9; x >= 0; x--) {
-
 			if (arCell[x][y].Answer == 1) {
 				if (xNums[y][num] == 0) {
 					xNums[y][num] = 1;
@@ -454,7 +417,6 @@ void GenNums() {
 			}
 		}
 	}
-
 	//12시방향 숫자들 생성
 	for (y = 0; y < 10; y++) {
 		num = 0;
@@ -474,23 +436,19 @@ void GenNums() {
 			}
 		}
 	}
-	//_stprintf_s(str, _T("%d|%d|%d|%d"), xNums[0][0], xNums[0][1], xNums[0][2], xNums[0][3]);
-	//MessageBox(hWndMain, str, _T("디버그"), MB_OK);
-	//_stprintf_s(str, _T("%d|%d|%d|%d"), yNums[0][0], yNums[0][1], yNums[0][2], yNums[0][3]);
-	//MessageBox(hWndMain, str, _T("디버그"), MB_OK);
-
 }
 
 void DrawNums(HDC hdc) {
 	TCHAR str[10];
 	int x, y, num;
+	GenNums();// 배열에 숫자 저장
 	//9시방향 숫자들 그리기
 	for (y = 0; y < 10; y++) {
 		num = 0;
 		for (x = 0; x < 10; x++) {
 			if (xNums[y][x] >= 1) {
 				_itow(xNums[y][x], str, 10);
-				TextOut(hdc, (initPoint - 12) - (num * 16) - ((_tcslen(str) - 1) * 9), (initPoint + 3) + y * cellSize, str, _tcslen(str));
+				TextOut(hdc, (initPoint - 12) - (num * 16) - (((int)_tcslen(str) - 1) * 9), (initPoint + 3) + y * cellSize, str, (int)_tcslen(str));
 				num++;
 			}
 		}
@@ -498,14 +456,13 @@ void DrawNums(HDC hdc) {
 			TextOut(hdc, (initPoint - 12) - (num * 9), (initPoint + 3) + y * cellSize, _T("0"), 1);
 		}
 	}
-
 	//12시방향 숫자들 그리기
 	for (y = 0; y < 10; y++) {
 		num = 0;
 		for (x = 0; x < 10; x++) {
 			if (yNums[y][x] >= 1) {
 				_itow(yNums[y][x], str, 10);
-				TextOut(hdc, (initPoint + 8) - ((_tcslen(str) - 1) * 4) + y * cellSize, (initPoint - 18) - (num * 16), str, _tcslen(str));
+				TextOut(hdc, (initPoint + 8) - (((int)_tcslen(str) - 1) * 4) + y * cellSize, (initPoint - 18) - (num * 16), str, (int)_tcslen(str));
 				num++;
 			}
 		}
@@ -695,7 +652,7 @@ int CopyTextToClipboard(const char* ap_string)
 
 {
 	// 저장할 문자열의 길이를 구한다. ('\0'까지 포함한 크기)
-	int string_length = strlen(ap_string) + 1;
+	int string_length = (int)strlen(ap_string) + 1;
 
 	// 클립보드로 문자열을 복사하기 위하여 메모리를 할당한다. 
 	// 클립보드에는 핸들을 넣는 형식이라서 HeapAlloc 함수 사용이 블가능하다. 
@@ -720,18 +677,3 @@ int CopyTextToClipboard(const char* ap_string)
 	}
 	return 0;
 }//https://pdsbox.tistory.com/37
-
-
-
-
-//temp 문자열 길이 구하기
-// num = _tcslen(temp);
-
-
-// 문자열에 쓰기 1
-// #include <stdio.h> 파일이 필요함
-// _stprintf_s(temp, _T("Cown Down: %2d"), Count);
-
-
-// 문자열에 쓰기 2
-// _tcscpy_s(temp, _T("호환성 지원"));
